@@ -21,41 +21,40 @@ export default async function handler(req, res) {
   };
 
   try {
-    // Get meta to map coin index -> name, and mids
-    const [metaRaw, allMids] = await Promise.all([
-      post({ type: 'meta' }),
-      post({ type: 'allMids' }),
-    ]);
+    // Get XYZ dex meta — returns [meta, assetCtxs]
+    const xyzMeta = await post({ type: 'metaAndAssetCtxs', dex: 'xyz' });
 
-    // Build index->name map from universe
-    const universe = metaRaw?.universe || [];
-    const indexToName = {};
-    universe.forEach((asset, i) => {
-      indexToName[`@${i}`] = asset.name;
-    });
-
-    const atCoins = Object.keys(allMids).filter(k => k.startsWith('@'));
-
-    if (!atCoins.length) {
-      return res.status(200).json({ results: [], debug: 'no @ coins in allMids' });
+    if (!Array.isArray(xyzMeta) || xyzMeta.length < 2) {
+      return res.status(200).json({ results: [], debug: 'metaAndAssetCtxs dex:xyz returned unexpected format', raw: JSON.stringify(xyzMeta).slice(0, 300) });
     }
 
+    const [meta, ctxs] = xyzMeta;
+    const universe = meta.universe || [];
+
+    if (!universe.length) {
+      return res.status(200).json({ results: [], debug: 'empty universe from dex:xyz' });
+    }
+
+    // Build coin list with mids from ctxs
+    const coins = universe.map((asset, i) => ({
+      name: asset.name,
+      coin: asset.name,
+      mid: parseFloat(ctxs[i]?.midPx || 0),
+    })).filter(c => c.mid > 0);
+
     const results = [];
-    await Promise.allSettled(atCoins.slice(0, 40).map(async (coin) => {
+    await Promise.allSettled(coins.slice(0, 30).map(async ({ name, mid }) => {
       try {
-        const book = await post({ type: 'l2Book', coin });
+        const book = await post({ type: 'l2Book', coin: name, dex: 'xyz' });
         const levels = book.levels || [];
         const bids = (levels[0] || []).map(l => ({ px: parseFloat(l.px), sz: parseFloat(l.sz) }));
         const asks = (levels[1] || []).map(l => ({ px: parseFloat(l.px), sz: parseFloat(l.sz) }));
-        const mid = parseFloat(allMids[coin]);
-        if (!mid || (!bids.length && !asks.length)) return;
-        // Use mapped name or fall back to coin id
-        const name = indexToName[coin] || coin;
+        if (!bids.length && !asks.length) return;
         results.push({ coin: name, mid, bids, asks });
       } catch(e) {}
     }));
 
-    res.status(200).json({ results, dex: 'xyz', source: 'hip3' });
+    res.status(200).json({ results, dex: 'xyz', source: 'hip3', total: coins.length });
   } catch(e) {
     res.status(500).json({ error: e.message });
   }
