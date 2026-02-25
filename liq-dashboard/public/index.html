@@ -235,23 +235,7 @@ async function fetchOrderly() {
   }).filter(Boolean);
 }
 
-// ── Mock fallback ─────────────────────────────────────────────────────────────
-function mockData(venue) {
-  const noise={hl:1.0,li:1.12,ord:1.07}[venue]||1;
-  const assets=[
-    {ticker:'NVDA',mid:875.4},{ticker:'TSLA',mid:248.2},{ticker:'AAPL',mid:213.5},
-    {ticker:'AMZN',mid:196.8},{ticker:'MSFT',mid:415.6},{ticker:'GOOGL',mid:175.9},
-    {ticker:'META',mid:538.2},{ticker:'XYZ100',mid:19850.0},{ticker:'COIN',mid:228.5},{ticker:'SPY',mid:531.0},
-  ];
-  return assets.map(a => {
-    const mid=a.mid*(1+(Math.random()-0.5)*0.003);
-    const spread=+((0.01+Math.random()*0.03)*noise).toFixed(4);
-    const base=(0.002+Math.random()*0.006)*noise;
-    const slippages={};
-    ALL_SIZES.forEach(sz=>{slippages[sz]=+(base*Math.log10(sz/500+1)*(0.85+Math.random()*0.3)).toFixed(4);});
-    return {ticker:a.ticker,venue,mid:+mid.toFixed(2),spread,slippages,simulated:true};
-  });
-}
+
 
 // ── Render ────────────────────────────────────────────────────────────────────
 const slipClass=v=>!v&&v!==0?'':v<0.02?'s0':v<0.05?'s1':v<0.15?'s2':v<0.5?'s3':'s4';
@@ -316,14 +300,14 @@ async function fetchAll() {
   const [hlR,liR,ordR]=await Promise.allSettled([fetchHL(),fetchLighter(),fetchOrderly()]);
   [[hlR,'hl'],[liR,'li'],[ordR,'ord']].forEach(([r,v])=>{
     if(r.status==='fulfilled'&&r.value.length){allData.push(...r.value);setStatus(v,'ok','LIVE');}
-    else{const m=mockData(v);allData.push(...m);state.simVenues.add(v);setStatus(v,'sim','SIM');}
+    else{setStatus(v,'err','ERROR');}
   });
   state.data=allData;
   document.getElementById('sumCycle').textContent=((Date.now()-start)/1000).toFixed(2)+'s';
   document.getElementById('ts').textContent=new Date().toLocaleTimeString();
   document.getElementById('liveDot').className='live-dot';
   document.getElementById('refreshBtn').disabled=false;
-  document.getElementById('simNotice').style.display=state.simVenues.size?'block':'none';
+  document.getElementById('simNotice').style.display='none';
   renderTable();
   startCountdown();
 }
