@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     // Step 1: get all mids, filter for xyz: prefix (HIP-3 equity perps)
     const allMids = await post({ type: 'allMids' });
     const allKeys = Object.keys(allMids);
-    const xyzCoins = allKeys.filter(k => k.startsWith('xyz:'));
+    const xyzCoins = allKeys.filter(k => k.startsWith('@'));
 
     if (!xyzCoins.length) {
       // Return sample of all keys so we can see what prefixes actually exist
