@@ -26,7 +26,7 @@ export default async function handler(req, res) {
     });
 
     if (!equityMarkets.length) {
-      return res.status(200).json({ order_books: [], debug: 'no equity markets matched', sample: allMarkets.slice(0, 10).map(m => m.symbol) });
+      return res.status(200).json({ order_books: [], debug: 'no equity markets matched', allSymbols: allMarkets.map(m => m.symbol) });
     }
 
     // Fetch order book for each equity market by market_id
