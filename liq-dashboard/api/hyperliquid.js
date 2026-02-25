@@ -1,51 +1,58 @@
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const BASE = 'https://api-evm.orderly.network/v1';
-  const EQUITY = ['AAPL','AMZN','GOOGL','META','MSFT','NVDA','TSLA','COIN','AMD','NFLX','PLTR','HOOD','SPY','QQQ'];
+  const HL = 'https://api.hyperliquid.xyz/info';
 
-  const get = async (url) => {
+  const post = async (body) => {
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 8000);
-    const r = await fetch(url, {
-      headers: { 'Accept': 'application/json' },
+    const t = setTimeout(() => ctrl.abort(), 10000);
+    const r = await fetch(HL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
       signal: ctrl.signal,
     });
     clearTimeout(t);
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    if (!r.ok) throw new Error(`HL HTTP ${r.status}`);
     return r.json();
   };
 
   try {
+    // Get all mids and log everything for debug
+    const allMids = await post({ type: 'allMids' });
+    const allKeys = Object.keys(allMids);
+    const atCoins = allKeys.filter(k => k.startsWith('@'));
+    const xyzCoins = allKeys.filter(k => k.startsWith('xyz:'));
+
+    // Use whichever prefix has coins
+    const coins = atCoins.length ? atCoins : xyzCoins.length ? xyzCoins : [];
+
+    if (!coins.length) {
+      return res.status(200).json({
+        results: [], debug: 'no @ or xyz: coins found',
+        sampleKeys: allKeys.slice(0, 20),
+        total: allKeys.length
+      });
+    }
+
     const results = [];
+    await Promise.allSettled(coins.slice(0, 30).map(async (coin) => {
+      try {
+        const book = await post({ type: 'l2Book', coin });
+        const levels = book.levels || [];
+        const bids = (levels[0] || []).map(l => ({ px: parseFloat(l.px), sz: parseFloat(l.sz) }));
+        const asks = (levels[1] || []).map(l => ({ px: parseFloat(l.px), sz: parseFloat(l.sz) }));
+        const mid = parseFloat(allMids[coin]);
+        if (!mid || (!bids.length && !asks.length)) return;
+        results.push({ coin, mid, bids, asks });
+      } catch(e) {}
+    }));
 
-    // Try both USDT and USDC suffix since Orderly uses both
-    const suffixes = ['USDT', 'USDC'];
-
-    await Promise.allSettled(EQUITY.flatMap(ticker =>
-      suffixes.map(async suffix => {
-        const symbol = `PERP_${ticker}_${suffix}`;
-        try {
-          const url = `${BASE}/public/orderbook?symbol=${symbol}&max_level=25`;
-          const data = await get(url);
-          if (!data?.data) return;
-          const book = data.data;
-          const bids = (book.bids || []).map(b => ({ px: +b[0], sz: +b[1] }));
-          const asks = (book.asks || []).map(a => ({ px: +a[0], sz: +a[1] }));
-          if (!bids.length && !asks.length) return;
-          // Only add if not already added for this ticker
-          if (!results.find(r => r.ticker === ticker)) {
-            results.push({ symbol, ticker, bids, asks });
-          }
-        } catch (e) {}
-      })
-    ));
-
-    res.status(200).json({ results });
-  } catch (e) {
+    res.status(200).json({ results, total_coins: coins.length, prefix: atCoins.length ? '@' : 'xyz:' });
+  } catch(e) {
     res.status(500).json({ error: e.message });
   }
 }
