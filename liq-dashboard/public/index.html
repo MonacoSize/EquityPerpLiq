@@ -12,7 +12,7 @@
     --text: #c0d0de; --muted: #3d5468; --muted2: #5a7080;
     --accent: #00d4aa; --accent2: #2196f3;
     --green: #00e676; --red: #ff4560; --warn: #ffd600;
-    --hl-color: #a78bfa; --li-color: #38bdf8; --ord-color: #fb923c;
+    --hl-color: #a78bfa; --ord-color: #fb923c;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:var(--bg); color:var(--text); font-family:'JetBrains Mono',monospace; font-size:12px; min-height:100vh; }
@@ -45,14 +45,11 @@
   .venue-pill .dot { width:7px; height:7px; border-radius:50%; }
   .hl-pill { border-color:rgba(167,139,250,0.3); color:var(--hl-color); }
   .hl-pill .dot { background:var(--hl-color); box-shadow:0 0 6px var(--hl-color); }
-  .li-pill { border-color:rgba(56,189,248,0.3); color:var(--li-color); }
-  .li-pill .dot { background:var(--li-color); box-shadow:0 0 6px var(--li-color); }
   .ord-pill { border-color:rgba(251,146,60,0.3); color:var(--ord-color); }
   .ord-pill .dot { background:var(--ord-color); box-shadow:0 0 6px var(--ord-color); }
   .venue-pill .status-tag { font-size:8px; color:var(--muted); border:1px solid var(--border2); padding:1px 5px; border-radius:1px; letter-spacing:0.06em; }
   .venue-pill .status-tag.ok  { color:var(--green); border-color:rgba(0,230,118,0.3); }
   .venue-pill .status-tag.err { color:var(--red);   border-color:rgba(255,69,96,0.3); }
-  .venue-pill .status-tag.sim { color:var(--warn);  border-color:rgba(255,214,0,0.3); }
   .summary-bar { display:flex; gap:1px; margin-bottom:20px; flex-wrap:wrap; }
   .sum-card { flex:1; min-width:140px; background:var(--panel); border:1px solid var(--border); padding:12px 16px; border-radius:2px; }
   .sum-label { font-size:9px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:4px; }
@@ -72,7 +69,6 @@
   .ticker { font-family:'Syne',sans-serif; font-weight:600; font-size:13px; color:#e0eeff; letter-spacing:0.04em; }
   .venue-badge { font-size:9px; letter-spacing:0.06em; text-transform:uppercase; padding:2px 6px; border-radius:2px; font-weight:600; }
   .v-hl  { color:var(--hl-color);  background:rgba(167,139,250,0.1); border:1px solid rgba(167,139,250,0.2); }
-  .v-li  { color:var(--li-color);  background:rgba(56,189,248,0.1);  border:1px solid rgba(56,189,248,0.2); }
   .v-ord { color:var(--ord-color); background:rgba(251,146,60,0.1);  border:1px solid rgba(251,146,60,0.2); }
   .mid-price { color:var(--text); font-size:12px; }
   .slip-cell { display:flex; flex-direction:column; align-items:flex-end; gap:2px; }
@@ -88,12 +84,11 @@
   .spinner { display:inline-block; width:12px; height:12px; border:1.5px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; vertical-align:middle; margin-right:8px; }
   @keyframes spin { to{transform:rotate(360deg)} }
   .notice { font-size:9px; color:var(--muted); letter-spacing:0.06em; padding:6px 0 20px; line-height:1.6; }
-  .sim-notice { display:inline-block; background:rgba(255,214,0,0.08); border:1px solid rgba(255,214,0,0.25); color:var(--warn); font-size:9px; padding:6px 14px; border-radius:2px; letter-spacing:0.06em; margin-bottom:14px; }
 </style>
 </head>
 <body>
 <header>
-  <div class="logo">LiqDepth <em>/ HIP-3 Equity Perp Monitor</em></div>
+  <div class="logo">LiqDepth <em>/ Equity Perp Monitor</em></div>
   <div class="header-meta">
     <span><span class="live-dot off" id="liveDot"></span>LIVE</span>
     <span>UPDATED <span id="ts">—</span></span>
@@ -104,7 +99,6 @@
   <div class="ctrl-group">
     <span class="ctrl-label">Venue</span>
     <button class="chip on" data-venue="hl">Hyperliquid HIP-3</button>
-    <button class="chip on" data-venue="li">Lighter</button>
     <button class="chip on" data-venue="ord">Orderly</button>
   </div>
   <div class="sep"></div>
@@ -130,11 +124,9 @@
 </div>
 <main>
   <div class="venue-bar">
-    <div class="venue-pill hl-pill"><div class="dot"></div>Hyperliquid HIP-3 (XYZ)<span class="status-tag" id="status-hl">LOADING</span></div>
-    <div class="venue-pill li-pill"><div class="dot"></div>Lighter<span class="status-tag" id="status-li">LOADING</span></div>
+    <div class="venue-pill hl-pill"><div class="dot"></div>Hyperliquid HIP-3<span class="status-tag" id="status-hl">LOADING</span></div>
     <div class="venue-pill ord-pill"><div class="dot"></div>Orderly<span class="status-tag" id="status-ord">LOADING</span></div>
   </div>
-  <div id="simNotice" class="sim-notice" style="display:none">⚠ One or more venues returned no data. Showing simulated order book data for those venues.</div>
   <div id="summaryBar" class="summary-bar" style="display:none">
     <div class="sum-card"><div class="sum-label">Assets Tracked</div><div class="sum-val" id="sumAssets">—</div><div class="sum-sub">equity perp markets</div></div>
     <div class="sum-card"><div class="sum-label">Best Venue ($10K)</div><div class="sum-val" id="sumBest">—</div><div class="sum-sub">lowest avg slippage</div></div>
@@ -157,17 +149,16 @@
 </main>
 <script>
 const ALL_SIZES = [1000,5000,10000,25000,50000];
-const EQUITY_TICKERS = ['NVDA','TSLA','AAPL','AMZN','MSFT','GOOGL','META','XYZ100','COIN','SPY','QQQ','PLTR','AMD','NFLX','HOOD','XAUUSD','XAGUSD'];
+const EQUITY_TICKERS = ['NVDA','TSLA','AAPL','AMZN','MSFT','GOOGL','META','COIN','SPY','QQQ','PLTR','AMD','NFLX','HOOD','XAUUSD','XAGUSD'];
 
 let state = {
-  activeVenues: new Set(['hl','li','ord']),
+  activeVenues: new Set(['hl','ord']),
   activeSizes: new Set(ALL_SIZES),
   data: [],
   refreshInterval: 15000,
   intervalHandle: null,
   countdownHandle: null,
   countdownSec: 15,
-  simVenues: new Set(),
 };
 
 function computeSlippage(asks, mid, notional) {
@@ -189,31 +180,11 @@ async function fetchHL() {
   const d = await r.json();
   if (!d.results || !d.results.length) throw new Error('No HIP-3 results');
   return d.results.map(({ coin, mid, bids, asks }) => {
-    const ticker = coin.includes(':') ? coin.split(':')[1] : coin;
+    const ticker = coin.includes(':') ? coin.split(':')[1] : coin.replace('@','');
     const spread = bids.length && asks.length ? ((asks[0].px - bids[0].px) / mid) * 100 : null;
     const slippages = {};
     ALL_SIZES.forEach(sz => { slippages[sz] = computeSlippage(asks, mid, sz); });
     return { ticker, venue:'hl', mid, spread, slippages };
-  }).filter(r => EQUITY_TICKERS.includes(r.ticker));
-}
-
-// ── Lighter ───────────────────────────────────────────────────────────────────
-async function fetchLighter() {
-  const r = await fetch('/api/lighter');
-  const d = await r.json();
-  if (d.error) throw new Error(d.error);
-  const markets = d.order_books || [];
-  if (!markets.length) throw new Error('No Lighter equity markets');
-  return markets.map(mkt => {
-    const ticker = mkt.ticker || mkt.symbol;
-    const bids = mkt.bids || [];
-    const asks = mkt.asks || [];
-    if (!bids.length || !asks.length) return null;
-    const mid = (bids[0].px + asks[0].px) / 2;
-    const spread = ((asks[0].px - bids[0].px) / mid) * 100;
-    const slippages = {};
-    ALL_SIZES.forEach(sz => { slippages[sz] = computeSlippage(asks, mid, sz); });
-    return { ticker, venue: 'li', mid, spread, slippages };
   }).filter(Boolean);
 }
 
@@ -235,15 +206,13 @@ async function fetchOrderly() {
   }).filter(Boolean);
 }
 
-
-
 // ── Render ────────────────────────────────────────────────────────────────────
 const slipClass=v=>!v&&v!==0?'':v<0.02?'s0':v<0.05?'s1':v<0.15?'s2':v<0.5?'s3':'s4';
 const barW=v=>v===null?0:Math.min(100,(v/0.8)*100);
 const fmtSlip=v=>v===null?'<span class="slip-na">N/A</span>':v.toFixed(3)+'%';
 const fmtPrice=px=>!px?'—':px>1000?'$'+px.toLocaleString('en-US',{maximumFractionDigits:2}):px>1?'$'+px.toFixed(2):'$'+px.toFixed(4);
 const fmtSpread=s=>s==null?'—':s.toFixed(3)+'%';
-const vLabel=v=>{const m={hl:'HIP-3/XYZ',li:'LIGHTER',ord:'ORDERLY'},c={hl:'v-hl',li:'v-li',ord:'v-ord'};return `<span class="venue-badge ${c[v]}">${m[v]}</span>`;};
+const vLabel=v=>{const m={hl:'HIP-3/XYZ',ord:'ORDERLY'},c={hl:'v-hl',ord:'v-ord'};return `<span class="venue-badge ${c[v]}">${m[v]}</span>`;};
 
 function renderTable() {
   const sizes=[...state.activeSizes].sort((a,b)=>a-b);
@@ -266,7 +235,7 @@ function renderTable() {
   sorted.forEach(row=>{
     const isNew=row.ticker!==lastTicker;lastTicker=row.ticker;
     html+=`<tr><td>${isNew?`<span class="ticker">${row.ticker}</span>`:''}</td>`;
-    html+=`<td>${vLabel(row.venue)}${row.simulated?'<span style="font-size:8px;color:var(--muted);margin-left:4px">SIM</span>':''}</td>`;
+    html+=`<td>${vLabel(row.venue)}</td>`;
     html+=`<td class="right mid-price">${fmtPrice(row.mid)}</td><td class="right spread-cell">${fmtSpread(row.spread)}</td>`;
     sizes.forEach(sz=>{
       const s=row.slippages[sz];const isBest=best[`${row.ticker}_${sz}`]===row.venue&&s!==null;const cls=slipClass(s);
@@ -281,10 +250,10 @@ function renderTable() {
   const vAvg={};
   rows.forEach(r=>{const s=r.slippages[10000];if(s===null)return;if(!vAvg[r.venue])vAvg[r.venue]={sum:0,n:0};vAvg[r.venue].sum+=s;vAvg[r.venue].n++;});
   let bestV='—',bestVVal=Infinity;
-  Object.entries(vAvg).forEach(([v,d])=>{const avg=d.sum/d.n;if(avg<bestVVal){bestVVal=avg;bestV=v==='hl'?'HIP-3/XYZ':v.toUpperCase();}});
+  Object.entries(vAvg).forEach(([v,d])=>{const avg=d.sum/d.n;if(avg<bestVVal){bestVVal=avg;bestV=v==='hl'?'HIP-3/XYZ':'ORDERLY';}});
   document.getElementById('sumBest').textContent=bestV;
   let deepTk='—',deepSlip=Infinity;
-  rows.forEach(r=>{const s=r.slippages[50000];if(s!==null&&s<deepSlip){deepSlip=s;deepTk=`${r.ticker}/${r.venue==='hl'?'HIP-3':r.venue.toUpperCase()}`;}});
+  rows.forEach(r=>{const s=r.slippages[50000];if(s!==null&&s<deepSlip){deepSlip=s;deepTk=`${r.ticker}/${r.venue==='hl'?'HIP-3':'ORDERLY'}`;}});
   document.getElementById('sumDeepest').textContent=deepTk;
 }
 
@@ -294,11 +263,10 @@ async function fetchAll() {
   document.getElementById('liveDot').className='live-dot off';
   document.getElementById('tbody').innerHTML=`<tr class="loading-row"><td colspan="10"><span class="spinner"></span>FETCHING ORDER BOOKS…</td></tr>`;
   const setStatus=(v,cls,lbl)=>{const el=document.getElementById(`status-${v}`);if(el){el.textContent=lbl;el.className='status-tag '+cls;}};
-  ['hl','li','ord'].forEach(v=>setStatus(v,'','LOADING'));
-  state.simVenues.clear();
+  ['hl','ord'].forEach(v=>setStatus(v,'','LOADING'));
   const allData=[];
-  const [hlR,liR,ordR]=await Promise.allSettled([fetchHL(),fetchLighter(),fetchOrderly()]);
-  [[hlR,'hl'],[liR,'li'],[ordR,'ord']].forEach(([r,v])=>{
+  const [hlR,ordR]=await Promise.allSettled([fetchHL(),fetchOrderly()]);
+  [[hlR,'hl'],[ordR,'ord']].forEach(([r,v])=>{
     if(r.status==='fulfilled'&&r.value.length){allData.push(...r.value);setStatus(v,'ok','LIVE');}
     else{setStatus(v,'err','ERROR');}
   });
@@ -307,7 +275,6 @@ async function fetchAll() {
   document.getElementById('ts').textContent=new Date().toLocaleTimeString();
   document.getElementById('liveDot').className='live-dot';
   document.getElementById('refreshBtn').disabled=false;
-  document.getElementById('simNotice').style.display='none';
   renderTable();
   startCountdown();
 }
