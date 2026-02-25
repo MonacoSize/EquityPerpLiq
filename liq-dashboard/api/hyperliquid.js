@@ -23,10 +23,17 @@ export default async function handler(req, res) {
   try {
     // Step 1: get all mids, filter for xyz: prefix (HIP-3 equity perps)
     const allMids = await post({ type: 'allMids' });
-    const xyzCoins = Object.keys(allMids).filter(k => k.startsWith('xyz:'));
+    const allKeys = Object.keys(allMids);
+    const xyzCoins = allKeys.filter(k => k.startsWith('xyz:'));
 
     if (!xyzCoins.length) {
-      return res.status(200).json({ results: [], dex: 'xyz', source: 'hip3', debug: 'no xyz: coins found in allMids' });
+      // Return sample of all keys so we can see what prefixes actually exist
+      return res.status(200).json({
+        results: [], dex: 'xyz', source: 'hip3',
+        debug: 'no xyz: coins found in allMids',
+        sampleKeys: allKeys.slice(0, 30),
+        totalKeys: allKeys.length
+      });
     }
 
     // Step 2: fetch L2 books for each xyz coin in parallel
