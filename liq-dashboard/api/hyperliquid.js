@@ -21,25 +21,27 @@ export default async function handler(req, res) {
   };
 
   try {
-    // Get all mids and log everything for debug
-    const allMids = await post({ type: 'allMids' });
-    const allKeys = Object.keys(allMids);
-    const atCoins = allKeys.filter(k => k.startsWith('@'));
-    const xyzCoins = allKeys.filter(k => k.startsWith('xyz:'));
+    // Get meta to map coin index -> name, and mids
+    const [metaRaw, allMids] = await Promise.all([
+      post({ type: 'meta' }),
+      post({ type: 'allMids' }),
+    ]);
 
-    // Use whichever prefix has coins
-    const coins = atCoins.length ? atCoins : xyzCoins.length ? xyzCoins : [];
+    // Build index->name map from universe
+    const universe = metaRaw?.universe || [];
+    const indexToName = {};
+    universe.forEach((asset, i) => {
+      indexToName[`@${i}`] = asset.name;
+    });
 
-    if (!coins.length) {
-      return res.status(200).json({
-        results: [], debug: 'no @ or xyz: coins found',
-        sampleKeys: allKeys.slice(0, 20),
-        total: allKeys.length
-      });
+    const atCoins = Object.keys(allMids).filter(k => k.startsWith('@'));
+
+    if (!atCoins.length) {
+      return res.status(200).json({ results: [], debug: 'no @ coins in allMids' });
     }
 
     const results = [];
-    await Promise.allSettled(coins.slice(0, 30).map(async (coin) => {
+    await Promise.allSettled(atCoins.slice(0, 40).map(async (coin) => {
       try {
         const book = await post({ type: 'l2Book', coin });
         const levels = book.levels || [];
@@ -47,11 +49,13 @@ export default async function handler(req, res) {
         const asks = (levels[1] || []).map(l => ({ px: parseFloat(l.px), sz: parseFloat(l.sz) }));
         const mid = parseFloat(allMids[coin]);
         if (!mid || (!bids.length && !asks.length)) return;
-        results.push({ coin, mid, bids, asks });
+        // Use mapped name or fall back to coin id
+        const name = indexToName[coin] || coin;
+        results.push({ coin: name, mid, bids, asks });
       } catch(e) {}
     }));
 
-    res.status(200).json({ results, total_coins: coins.length, prefix: atCoins.length ? '@' : 'xyz:' });
+    res.status(200).json({ results, dex: 'xyz', source: 'hip3' });
   } catch(e) {
     res.status(500).json({ error: e.message });
   }
