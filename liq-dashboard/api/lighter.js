@@ -12,7 +12,9 @@ export default async function handler(req, res) {
     const t = setTimeout(() => ctrl.abort(), 10000);
     const r = await fetch(`${BASE}/${path}`, { headers: { 'Accept': 'application/json' }, signal: ctrl.signal });
     clearTimeout(t);
-    return { status: r.status, data: await r.json() };
+    const text = await r.text();
+    if (!text || !text.trim()) throw new Error(`Empty response from ${path}`);
+    return { status: r.status, data: JSON.parse(text) };
   };
 
   try {
@@ -20,21 +22,25 @@ export default async function handler(req, res) {
     const allMarkets = data.order_books || [];
     const equityMarkets = allMarkets.filter(m => EQUITY.includes((m.symbol || '').toUpperCase()));
 
-    // Test one book fetch to see what comes back
-    if (equityMarkets.length) {
-      const mkt = equityMarkets[0];
-      const r1 = await get(`orderBook?market_id=${mkt.market_id}&depth=5`);
-      const r2 = await get(`orderbook?market_id=${mkt.market_id}&depth=5`);
-      return res.status(200).json({
-        foundMarkets: equityMarkets.map(m => ({ symbol: m.symbol, market_id: m.market_id })),
-        testMarket: mkt.symbol,
-        orderBook_result: r1,
-        orderbook_result: r2,
-      });
+    if (!equityMarkets.length) {
+      return res.status(200).json({ order_books: [], debug: 'no equity markets matched', sample: allMarkets.slice(0,5).map(m=>m.symbol) });
     }
 
-    res.status(200).json({ order_books: [], debug: 'no equity markets' });
+    // Fetch books one at a time to avoid rate limiting
+    const order_books = [];
+    for (const mkt of equityMarkets) {
+      try {
+        const { data: bookData } = await get(`orderBook?market_id=${mkt.market_id}&depth=20`);
+        const book = bookData.order_book || bookData;
+        const bids = (book.bids || []).map(b => Array.isArray(b) ? { px: +b[0], sz: +b[1] } : { px: +(b.price||b.px), sz: +(b.quantity||b.size||b.sz) });
+        const asks = (book.asks || []).map(a => Array.isArray(a) ? { px: +a[0], sz: +a[1] } : { px: +(a.price||a.px), sz: +(a.quantity||a.size||a.sz) });
+        if (!bids.length && !asks.length) continue;
+        order_books.push({ symbol: mkt.symbol, ticker: mkt.symbol, bids, asks });
+      } catch(e) {}
+    }
+
+    res.status(200).json({ order_books });
   } catch(e) {
-    res.status(500).json({ error: e.message, stack: e.stack });
+    res.status(500).json({ error: e.message });
   }
 }
